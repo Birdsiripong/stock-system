@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบจัดการวัสดุ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-content">
+      <h1>📦 ระบบจัดการวัสดุ</h1>
+      <p>Material Stock Management System</p>
+    </div>
+  </header>
+
+  <!-- TAB NAV -->
+  <nav class="tabs-nav">
+    <div class="tabs-inner">
+      <button class="tab-btn active" onclick="switchTab('tab-stock')">📋 รายการวัสดุ</button>
+      <button class="tab-btn" onclick="switchTab('tab-movement')">🔄 รับ / จ่ายวัสดุ</button>
+      <button class="tab-btn" onclick="switchTab('tab-summary')">📊 สรุปคงเหลือ</button>
+      <button class="tab-btn" onclick="switchTab('tab-expense')">💰 สรุปค่าใช้จ่าย</button>
+    </div>
+  </nav>
+
+  <main class="container">
+
+    <!-- ===== TAB 1: รายการวัสดุ ===== -->
+    <div id="tab-stock" class="tab-content active">
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <p class="stat-label">วัสดุทั้งหมด</p>
+          <p class="stat-value" id="st-total-items">0 รายการ</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">มูลค่าคงเหลือรวม</p>
+          <p class="stat-value" id="st-total-value">฿0.00</p>
+        </div>
+        <div class="stat-card warning">
+          <p class="stat-label">วัสดุใกล้หมด (≤10)</p>
+          <p class="stat-value" id="st-low-stock">0 รายการ</p>
+        </div>
+        <div class="stat-card info">
+          <p class="stat-label">รายการเคลื่อนไหวทั้งหมด</p>
+          <p class="stat-value" id="st-movements">0 ครั้ง</p>
+        </div>
+      </div>
+
+      <!-- ฟอร์มเพิ่มวัสดุ -->
+      <div class="card">
+        <h2>➕ เพิ่มวัสดุใหม่</h2>
+        <div class="form-grid form-grid-5">
+          <div class="form-group">
+            <label>ชื่อวัสดุ</label>
+            <input type="text" id="m-name" placeholder="เช่น สกรูหัวกลม" />
+          </div>
+          <div class="form-group">
+            <label>ขนาด / สเปค</label>
+            <input type="text" id="m-size" placeholder="เช่น M6×20mm" />
+          </div>
+          <div class="form-group">
+            <label>หน่วย</label>
+            <input type="text" id="m-unit" placeholder="เช่น ชิ้น / กล่อง / กก." />
+          </div>
+          <div class="form-group">
+            <label>ราคา/หน่วย (฿)</label>
+            <input type="number" id="m-price" placeholder="0.00" min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>สต็อคเริ่มต้น</label>
+            <input type="number" id="m-qty" placeholder="0" min="0" />
+          </div>
+        </div>
+        <button class="btn-primary" onclick="addMaterial()" style="margin-top:14px">➕ เพิ่มวัสดุ</button>
+      </div>
+
+      <!-- ตาราง -->
+      <div class="card">
+        <div class="table-header">
+          <h2>📋 รายการวัสดุทั้งหมด</h2>
+          <input type="text" id="search-material" placeholder="🔍 ค้นหาวัสดุ..." oninput="renderMaterials()" />
+        </div>
+        <div class="table-wrapper">
+          <table id="tbl-materials">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>ชื่อวัสดุ</th>
+                <th>ขนาด / สเปค</th>
+                <th>หน่วย</th>
+                <th>คงเหลือ</th>
+                <th>ราคา/หน่วย</th>
+                <th>มูลค่าคงเหลือ</th>
+                <th>สถานะ</th>
+                <th>จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-materials"></tbody>
+          </table>
+          <div id="empty-materials" class="empty-state">
+            <p>📭</p><p>ยังไม่มีวัสดุในระบบ — เพิ่มวัสดุด้านบนได้เลย</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ===== TAB 2: รับ / จ่าย ===== -->
+    <div id="tab-movement" class="tab-content">
+
+      <div class="card">
+        <h2>🔄 บันทึกการรับ / จ่ายวัสดุ</h2>
+        <div class="form-grid form-grid-3">
+          <div class="form-group">
+            <label>ประเภท</label>
+            <select id="mv-type" onchange="toggleCompanyField()">
+              <option value="IN">📥 รับเข้า (IN)</option>
+              <option value="OUT">📤 จ่ายออก (OUT)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>วัสดุ</label>
+            <select id="mv-material">
+              <option value="">-- เลือกวัสดุ --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>จำนวน</label>
+            <input type="number" id="mv-qty" placeholder="0" min="1" />
+          </div>
+          <div class="form-group">
+            <label>วันที่</label>
+            <input type="date" id="mv-date" />
+          </div>
+          <div class="form-group" id="field-company">
+            <label>ชื่อบริษัทผู้ส่ง <span style="color:#718096;font-weight:400">(รับเข้า)</span></label>
+            <input type="text" id="mv-company" placeholder="เช่น บ.สยามเทรด จำกัด" />
+          </div>
+          <div class="form-group">
+            <label>หมายเหตุ</label>
+            <input type="text" id="mv-note" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" />
+          </div>
+        </div>
+        <button class="btn-primary" onclick="addMovement()" style="margin-top:14px">✅ บันทึกรายการ</button>
+      </div>
+
+      <div class="card">
+        <div class="table-header">
+          <h2>📜 ประวัติการรับ / จ่าย</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="filter-mv-type" onchange="renderMovements()">
+              <option value="">ทุกประเภท</option>
+              <option value="IN">📥 รับเข้า</option>
+              <option value="OUT">📤 จ่ายออก</option>
+            </select>
+            <input type="text" id="search-movement" placeholder="🔍 ค้นหา..." oninput="renderMovements()" style="width:160px" />
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="tbl-movements">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>วันที่</th>
+                <th>ประเภท</th>
+                <th>ชื่อวัสดุ</th>
+                <th>ขนาด</th>
+                <th>จำนวน</th>
+                <th>หน่วย</th>
+                <th>บริษัท</th>
+                <th>หมายเหตุ</th>
+                <th>ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-movements"></tbody>
+          </table>
+          <div id="empty-movements" class="empty-state">
+            <p>📭</p><p>ยังไม่มีรายการเคลื่อนไหว</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ===== TAB 3: สรุปคงเหลือ ===== -->
+    <div id="tab-summary" class="tab-content">
+      <div class="card">
+        <div class="table-header">
+          <h2>📊 ตารางสรุปวัสดุคงเหลือ</h2>
+          <button class="btn-outline" onclick="window.print()">🖨️ พิมพ์</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="tbl-summary">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>ชื่อวัสดุ</th>
+                <th>ขนาด / สเปค</th>
+                <th>หน่วย</th>
+                <th>สต็อคเริ่มต้น</th>
+                <th>รับเข้ารวม</th>
+                <th>จ่ายออกรวม</th>
+                <th>คงเหลือ</th>
+                <th>ราคา/หน่วย</th>
+                <th>มูลค่าคงเหลือ</th>
+                <th>สถานะ</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-summary"></tbody>
+          </table>
+          <div id="empty-summary" class="empty-state">
+            <p>📭</p><p>ยังไม่มีข้อมูล</p>
+          </div>
+        </div>
+        <div id="summary-footer" class="summary-footer"></div>
+      </div>
+    </div>
+
+
+    <!-- ===== TAB 4: สรุปค่าใช้จ่าย ===== -->
+    <div id="tab-expense" class="tab-content">
+
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card">
+          <p class="stat-label">ค่าสั่งซื้อ (รับเข้า) รวม</p>
+          <p class="stat-value green" id="exp-total-in">฿0.00</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">มูลค่าจ่ายออกรวม</p>
+          <p class="stat-value" id="exp-total-out">฿0.00</p>
+        </div>
+        <div class="stat-card info">
+          <p class="stat-label">มูลค่าคงเหลือในสต็อค</p>
+          <p class="stat-value" id="exp-stock-val">฿0.00</p>
+        </div>
+      </div>
+
+      <!-- สรุปแยกบริษัท -->
+      <div class="card">
+        <div class="table-header">
+          <h2>🏢 สรุปยอดสั่งซื้อแยกตามบริษัท</h2>
+          <button class="btn-outline" onclick="window.print()">🖨️ พิมพ์</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="tbl-by-company">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>ชื่อบริษัท</th>
+                <th>จำนวนรายการ</th>
+                <th>ยอดสั่งซื้อรวม (฿)</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-by-company"></tbody>
+          </table>
+          <div id="empty-by-company" class="empty-state">
+            <p>📭</p><p>ยังไม่มีข้อมูลรับเข้า</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- รายละเอียดทุกรายการ IN -->
+      <div class="card">
+        <h2>📋 รายละเอียดการสั่งซื้อทั้งหมด</h2>
+        <div class="table-wrapper">
+          <table id="tbl-expense-detail">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>วันที่</th>
+                <th>ชื่อวัสดุ</th>
+                <th>ขนาด</th>
+                <th>จำนวน</th>
+                <th>หน่วย</th>
+                <th>ราคา/หน่วย</th>
+                <th>รวม (฿)</th>
+                <th>บริษัทผู้ส่ง</th>
+                <th>หมายเหตุ</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-expense-detail"></tbody>
+          </table>
+          <div id="empty-expense-detail" class="empty-state">
+            <p>📭</p><p>ยังไม่มีรายการสั่งซื้อ</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
